@@ -9,7 +9,7 @@ class VisualSheet:
         # figure is a canvas for the whole visualization
 
         self.fig = plt.figure(
-            # figsize=(self.sheet.width * 2, self.sheet.height)
+            figsize=(self.sheet.width * 2, self.sheet.height)
         )  # figure contains two subplots in one row
         # figsize=(self.sheet.width * 2, self.sheet.height)
         # figuresize
@@ -28,6 +28,7 @@ class VisualSheet:
         self.ax_unpacked.set_title("Unpacked Stocks")
         self.ax_unpacked.set_xticks([])
         self.ax_unpacked.set_yticks([])
+        self.ax_unpacked.axis("equal")
 
     def draw(self, unpacked=False):
         """
@@ -64,12 +65,41 @@ class VisualSheet:
         3. draw the unpacked stocks on the grid
         """
 
+        def _draw_stocks_staggered(canvas_width, canvas_height, stocks, margin):
+            """Draws rectangles in a staggered layout within the given canvas."""
+
+            max_width = max([stock.width for stock in self.sheet.unpacked_stocks])
+            # Calculate columns assuming maximum width rectangles
+            columns = canvas_width // (max_width + 2 * margin)
+
+            column_baselines = [0] * columns  # Track baseline for each column
+
+            for stock in stocks:
+                # Find the column with the lowest baseline
+                shortest_column = column_baselines.index(min(column_baselines))
+
+                # Calculate x and y coordinates
+                x = shortest_column * (max_width + margin) + margin
+                y = column_baselines[shortest_column]
+
+                # Draw the stock
+                self._draw_stock(self.ax_unpacked, stock, custom_xy=(x, y))
+
+                # Update the baseline for that column
+                column_baselines[shortest_column] += stock.height + margin
+
+        _draw_stocks_staggered(
+            self.sheet.width, self.sheet.height, self.sheet.unpacked_stocks, margin=1
+        )
+
+        # --------
+        """
         max_width = max([stock.width for stock in self.sheet.unpacked_stocks])
         max_height = max([stock.height for stock in self.sheet.unpacked_stocks])
 
         MARGIN = 1  # margin between stocks
-        max_width += 1 * MARGIN
-        max_height += 1 * MARGIN
+        max_width += 2 * MARGIN
+        max_height += 2 * MARGIN
         # calculate the number of rows and columns needed to draw the unpacked stocks
         num_rows = self.sheet.height // max_height
         num_cols = self.sheet.width // max_width
@@ -90,6 +120,7 @@ class VisualSheet:
             if current_column == num_cols:
                 current_column = 0
                 current_row += 1
+        """
 
     def _draw_stock(self, ax, stock, *, custom_xy: tuple = None) -> None:
         """

@@ -16,19 +16,20 @@ class VisualSheet:
 
         # axes, two axes for two subplots, one for sheet, one for unpacked stocks
         self.ax = self.fig.add_subplot(121)  # with size sheet.width x sheet.height
-
-        # the dimensions of the self.ax is sheet.width x sheet.height
+        self.ax.set_title("Sheet")
         self.ax.set_xlim(0, sheet.width)
         self.ax.set_ylim(0, sheet.height)
-        self.ax.set_title("Sheet")
+        self.ax.set_xticks([0, sheet.width])
+        self.ax.set_yticks([0, sheet.height])
+        self.ax.axis("scaled")
 
         self.ax_unpacked = self.fig.add_subplot(122)
+        self.ax_unpacked.set_title("Unpacked Stocks")
         self.ax_unpacked.set_xlim(0, sheet.width)
         self.ax_unpacked.set_ylim(0, sheet.height)
-        self.ax_unpacked.set_title("Unpacked Stocks")
         self.ax_unpacked.set_xticks([])
         self.ax_unpacked.set_yticks([])
-        self.ax_unpacked.axis("equal")
+        self.ax_unpacked.axis("scaled")
 
     def draw(self, unpacked=False):
         """
@@ -52,8 +53,18 @@ class VisualSheet:
         """
         Draw the sheet with the stocks packed on it
         """
+        #
+        xticks_set = set(self.ax.get_xticks())
+        yticks_set = set(self.ax.get_yticks())
+        print(xticks_set, yticks_set)
+
         for stock in self.sheet.packed_stocks:
             self._draw_stock(self.ax, stock)
+            # add to x and y ticks for better visualization
+            xticks_set.update((stock.x, stock.x + stock.width))
+            yticks_set.update((stock.y, stock.y + stock.height))
+        self.ax.set_xticks(list(xticks_set))
+        self.ax.set_yticks(list(yticks_set))
 
     def draw_unpacked(self):
         """
@@ -65,10 +76,14 @@ class VisualSheet:
         3. draw the unpacked stocks on the grid
         """
 
-        def _draw_stocks_staggered(canvas_width, canvas_height, stocks, margin):
+        def _draw_stocks_staggered(
+            canvas_width, canvas_height, stocks, margin, scale=1.0
+        ):
             """Draws rectangles in a staggered layout within the given canvas."""
 
-            max_width = max([stock.width for stock in self.sheet.unpacked_stocks])
+            max_width = max(
+                [stock.width * scale for stock in self.sheet.unpacked_stocks]
+            )
             # Calculate columns assuming maximum width rectangles
             columns = canvas_width // (max_width + 2 * margin)
 
@@ -76,53 +91,74 @@ class VisualSheet:
 
             for stock in stocks:
                 # Find the column with the lowest baseline
-                shortest_column = column_baselines.index(min(column_baselines))
+                shortest_column = column_baselines.index(min(column_baselines), 0)
 
                 # Calculate x and y coordinates
                 x = shortest_column * (max_width + margin) + margin
                 y = column_baselines[shortest_column]
 
                 # Draw the stock
-                self._draw_stock(self.ax_unpacked, stock, custom_xy=(x, y))
+                self._draw_stock(
+                    self.ax_unpacked,
+                    Stock(stock.width * scale, stock.height * scale, x, y),
+                    custom_text=f"{stock.width}x{stock.height}",
+                )
 
                 # Update the baseline for that column
-                column_baselines[shortest_column] += stock.height + margin
+                column_baselines[shortest_column] += stock.height * scale + margin
 
-        _draw_stocks_staggered(
-            self.sheet.width, self.sheet.height, self.sheet.unpacked_stocks, margin=1
+        def _draw_stocks_grid(canvas_width, canvas_height, stocks, margin, scale=1.0):
+            """Draws rectangles in a grid layout within the given canvas."""
+
+            max_width = max([stock.width for stock in stocks]) * scale
+            max_height = max([stock.height for stock in stocks]) * scale
+
+            # Calculate columns and rows assuming maximum width and height rectangles
+            num_cols = canvas_width // (max_width + 2 * margin) or 1
+            num_rows = canvas_height // (max_height + 2 * margin) or 1
+
+            for i, stock in enumerate(stocks):
+                # Calculate x and y coordinates
+                x = (i % num_cols) * (max_width + margin) + margin
+                y = (i // num_cols) * (max_height + margin) + margin
+
+                # Draw the stock
+                self._draw_stock(
+                    self.ax_unpacked,
+                    Stock(stock.width * scale, stock.height * scale, x, y),
+                    custom_text=f"{stock.width}x{stock.height}",
+                )
+
+        def _draw_stocks_horizontal(
+            canvas_width, canvas_height, stocks, margin, scale=1.0
+        ):
+            """Draws rectangles in only one axis next to each other within the given canvas."""
+            last_x = 0
+            for i, stock in enumerate(stocks):
+                # Calculate x and y coordinates
+                x = last_x + margin
+                y = margin
+                last_x += stock.width + margin
+
+                # Draw the stock
+                self._draw_stock(
+                    self.ax_unpacked,
+                    Stock(stock.width * scale, stock.height * scale, x, y),
+                    custom_text=f"{stock.width}x{stock.height}",
+                )
+
+        # Choose a drawing style for the unpacked
+        _draw_stocks_grid(
+            self.sheet.width,
+            self.sheet.height,
+            self.sheet.unpacked_stocks,
+            margin=1,
+            scale=0.5,
         )
 
-        # --------
-        """
-        max_width = max([stock.width for stock in self.sheet.unpacked_stocks])
-        max_height = max([stock.height for stock in self.sheet.unpacked_stocks])
-
-        MARGIN = 1  # margin between stocks
-        max_width += 2 * MARGIN
-        max_height += 2 * MARGIN
-        # calculate the number of rows and columns needed to draw the unpacked stocks
-        num_rows = self.sheet.height // max_height
-        num_cols = self.sheet.width // max_width
-
-        # draw the unpacked stocks on the grid
-        # keep track of the current row and column
-        current_row = 0
-        current_column = 0
-        for stock in self.sheet.unpacked_stocks:
-            # calculate the x and y coordinates of the stock
-            x = current_column * max_width + MARGIN
-            y = current_row * max_height + MARGIN
-            # draw the stock
-            self._draw_stock(self.ax_unpacked, stock, custom_xy=(x, y))
-
-            # update the current row and column
-            current_column += 1
-            if current_column == num_cols:
-                current_column = 0
-                current_row += 1
-        """
-
-    def _draw_stock(self, ax, stock, *, custom_xy: tuple = None) -> None:
+    def _draw_stock(
+        self, ax, stock, *, custom_xy: tuple = None, custom_text=None
+    ) -> None:
         """
         Draw a stock using matplotlib Rectangle
 
@@ -152,7 +188,7 @@ class VisualSheet:
             y,
             stock.width,
             stock.height,
-            text=f"{stock.width}x{stock.height}",
+            text=f"{stock.width}x{stock.height}" if not custom_text else custom_text,
         )
 
     # draw the rectangle in a canvas

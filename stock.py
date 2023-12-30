@@ -135,6 +135,22 @@ class Sheet:
         self.unpacked_stocks.remove(stock)
         return True
 
+    def packNext(self, loc: tuple) -> bool:
+        """
+        Pack the next stock into the sheet
+
+        Args:
+            loc (tuple): The new location of the stock within the sheet. (x, y)
+
+        Returns:
+            bool: True if the packing step is valid, False otherwise.
+        """
+        if len(self.unpacked_stocks) == 0:
+            return False
+
+        # Assuming the unpacked stocks are sorted by area
+        return self.pack(self.unpacked_stocks[0], loc)
+
     def validate_pack_step(self, stock: Stock, loc: tuple) -> bool:
         """
         Validate the packing step.

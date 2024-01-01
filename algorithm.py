@@ -1,9 +1,40 @@
 from stock import Stock, Sheet
+from visualization import VisualSheet
+
+
+# Auxiliary functions
+def is_intersecting(rect1, rect2):
+    """
+    Check if two rectangles are intersecting
+    :param rect1: tuple of (x, y, width, height)
+    :param rect2: tuple of (x, y, width, height)
+    :return: True if the two rectangles are intersecting, False otherwise
+    """
+    x1, y1, w1, h1 = rect1
+    x2, y2, w2, h2 = rect2
+    return not (x1 + w1 <= x2 or x2 + w2 <= x1 or y1 + h1 <= y2 or y2 + h2 <= y1)
+
+
+# def intersecting_direction(rect1, rect2):
+#     """
+#     Check if two rectangles are intersecting
+#     :param rect1: tuple of (x, y, width, height)
+#     :param rect2: tuple of (x, y, width, height)
+#     :return: 'x' if the two rectangles are intersecting on the x axis, 'y' if on the y axis
+#     """
+#     x1, y1, w1, h1 = rect1
+#     x2, y2, w2, h2 = rect2
+#     if x1 + w1 <= x2 or x2 + w2 <= x1:
+#         return "x"
+#     if y1 + h1 <= y2 or y2 + h2 <= y1:
+#         return "y"
+#     return None
 
 
 def cutting_stock_problem(sheet):
     # Sort the rectangles in descending order of height
-    stocks.sort(key=lambda s: s.height, reverse=True)
+    stocks = sorted(sheet.unpacked_stocks, key=lambda s: s.height, reverse=True)
+    # stocks.sort(key=lambda s: s.height, reverse=True)
 
     # Initialize the sheet with the first stock
     sheet.packNext((0, 0))
@@ -54,10 +85,164 @@ def cutting_stock_problem(sheet):
     return True
 
 
-# Example usage
-sheet = Sheet(10, 10)
-stocks = [Stock(4, 3), Stock(2, 5), Stock(3, 2), Stock(1, 4)]
-sheet.addStocks(stocks)
+def bin_packing_BLF(sheet):
+    """
+    Bin Packing Algorithm: Bottom Left Fill
+    Consists of two steps:
+    1. Try to pack the item in available rectangles
+    2.1. If packed, update the available rectangles
+    2.2. If not packed, create a new rectangle
 
-result = cutting_stock_problem(sheet)
-print(result)
+    :param sheet: Sheet object that contains the stocks
+    """
+
+    def update_available_rectangles(
+        available_rectangles, packed_rectangle_index, packed_stock
+    ):
+        """
+        Update the available rectangles after packing a stock
+        :param available_rectangles: list of available rectangles
+        :param packed_stock: Stock object that was packed
+        :return: updated available rectangles with the required changes applied.
+        """
+        # Get the packed rectangle
+        xr, yr, wr, hr = available_rectangles[packed_rectangle_index]
+        packed_stock_rect = (
+            packed_stock.x,
+            packed_stock.y,
+            packed_stock.width,
+            packed_stock.height,
+        )
+        # Create the new top and right rectangles
+        right_rectangle = (xr + packed_stock.width, yr, wr - packed_stock.width, hr)
+        top_rectangle = (xr, yr + packed_stock.height, wr, hr - packed_stock.height)
+        # Add the new top and right rectangles
+        if wr > packed_stock.width:  # if there's space for a right rectangle
+            available_rectangles.append(right_rectangle)
+            print(f"Right rectangle: {right_rectangle}")  # DEBUG
+        if hr > packed_stock.height:  # top rectangle
+            available_rectangles.append(top_rectangle)
+            print(f"Top rectangle: {top_rectangle}")  # DEBUG
+
+        # Remove the packed rectangle from the available rectangles
+        available_rectangles.pop(packed_rectangle_index)
+
+        # check collision with other rectangles and update the rectangles
+        for i, (xr, yr, wr, hr) in enumerate(available_rectangles):
+            # TODO Think: should the new rectangles be checked upon or the original packed one?
+            if is_intersecting(right_rectangle, (xr, yr, wr, hr)):
+                # if it's on the same plane, then it's eaten by the bottom rectangle
+                if xr == right_rectangle[0] and yr != right_rectangle[1]:
+                    print(
+                        f"{right_rectangle} Eaten by the bottom rectangle {(xr, yr, wr, hr)}"
+                    )  # DEBUG
+                    available_rectangles.remove(
+                        right_rectangle
+                    )  # remove the right rectangle
+                else:
+                    available_rectangles[i] = (
+                        xr,
+                        yr,
+                        right_rectangle[0] + right_rectangle[2] - xr,
+                        hr,
+                    )
+            if is_intersecting(top_rectangle, (xr, yr, wr, hr)):
+                # if it's on the same plane, then it's eaten by the left rectangle
+                if yr == top_rectangle[1] and xr != top_rectangle[0]:
+                    print(
+                        f"{top_rectangle} Eaten by the left rectangle {(xr, yr, wr, hr)}"
+                    )  # DEBUG
+                    available_rectangles.remove(top_rectangle)
+                else:
+                    available_rectangles[i] = (
+                        xr,
+                        yr,
+                        wr,
+                        top_rectangle[1] + top_rectangle[3] - yr,
+                    )
+            if is_intersecting(packed_stock_rect, (xr, yr, wr, hr)):
+                # update the rectangle so it's cut by the packed stock
+                # example: rect(0, 6, 20, 5) and stock(6, 5, 3, 5) -> cut vertically
+                # example: rect(16, 5, 4, 3) and stock(19, 0, 1, 10) -> cut horizontally
+                # cut the rectangle with the packed stock
+                available_rectangles[i] = (
+                    (xr, yr, wr, packed_stock.y - yr)
+                    if packed_stock.y > yr  # is on the top, cutting horizontally
+                    else (xr, yr, packed_stock.x - xr, hr)
+                )
+
+            # Remove the rectangles with zero width or height
+            if available_rectangles[i][2] == 0 or available_rectangles[i][3] == 0:
+                available_rectangles.pop(i)
+
+        # Sort the rectangles in descending order of height
+        # it's to sort by height, if equal then by width, then by x, then by y
+        available_rectangles.sort(key=lambda r: (r[3], r[2], r[0], r[1]), reverse=True)
+
+        return available_rectangles
+
+    # Beginning of the main algorithm
+    # Sort the stocks in descending order of height
+    # stocks.sort(key=lambda s: s.height, reverse=True)
+    stocks = sorted(sheet.unpacked_stocks, key=lambda s: s.height, reverse=True)
+    print(stocks)  # DEBUG
+
+    available_rectangles = [
+        (0, 0, sheet.width, sheet.height)  # xr, yr, wr, hr
+    ]  # initial the sheet as one available rectangle
+    for stock in stocks:
+        is_packed = False
+        # Find the first rectangle that can fit the stock
+        for i, (xr, yr, wr, hr) in enumerate(available_rectangles):
+            if wr >= stock.width and hr >= stock.height:
+                # Pack the stock in the current location
+                is_packed = sheet.pack(stock, (xr, yr))
+                available_rectangles = update_available_rectangles(
+                    available_rectangles, i, stock
+                )
+                print(f"Packed Stock: {stock}, {is_packed}")  # DEBUG
+                print(f"Rectangles: {available_rectangles}")  # DEBUG
+                break
+                # if is_packed:
+                #     break
+                # else:
+                #     stock.rotate90()
+                #     is_packed = sheet.pack(stock, (xr, yr))
+                #     available_rectangles = update_available_rectangles(
+                #         available_rectangles, i, stock
+                #     )
+                #     print(f"Packed Stock: {stock}, {is_packed}")
+                #     break
+
+        if not is_packed:
+            return False
+
+        VisualSheet(sheet).draw(unpacked=True)  # DEBUG
+    # Algorithm finished successfully
+    return True
+
+
+def test_and_visualize_BLF():
+    sheet = Sheet(20, 11)
+    stocks = [
+        Stock(5, 2),
+        Stock(3, 5),
+        Stock(4, 3),
+        Stock(3, 3),
+        Stock(8, 5),
+        Stock(5, 5),
+        Stock(3, 3),
+        Stock(3, 6),
+        Stock(3, 2),
+        Stock(3, 6),
+        Stock(7, 3),
+    ]
+    sheet.addStocks(stocks)
+
+    is_success = bin_packing_BLF(sheet)
+    print(f"Did it succeed?: {is_success}")
+    # VisualSheet(sheet).draw(unpacked=True)
+
+
+if __name__ == "__main__":
+    test_and_visualize_BLF()

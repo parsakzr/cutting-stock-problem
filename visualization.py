@@ -110,6 +110,9 @@ class VisualSheet:
         def _draw_stocks_grid(canvas_width, canvas_height, stocks, margin, scale=1.0):
             """Draws rectangles in a grid layout within the given canvas."""
 
+            if not stocks:
+                return
+
             max_width = max([stock.width for stock in stocks]) * scale
             max_height = max([stock.height for stock in stocks]) * scale
 

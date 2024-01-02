@@ -82,8 +82,8 @@ class Sheet:
     def __init__(self, width, height, stocks: list = []) -> None:
         self.width = width
         self.height = height
-        self.packed_stocks = []
         self.unpacked_stocks = stocks
+        self.packed_stocks = []
         self.sortStocks()
 
     def addStock(self, stock: Stock) -> None:
@@ -184,21 +184,148 @@ class Sheet:
         del stock_new  # free up memory
         return True
 
+    # useful methods after packing
+    def getArea(self) -> int:
+        """
+        Get the area of the sheet
+        """
+        return self.width * self.height
+
+    def getLowerBoundHeight(self) -> int:
+        """
+        Get the lower bound of height of the sheet
+        Which is the maximum height that the packed stocks has been placed
+        """
+        return max([stock.y + stock.height for stock in self.packed_stocks])
+
+    def getAreaUsed(self) -> int:
+        """
+        Get the area of the sheet that is used by the stocks.
+        Sum of the areas of the packed stocks
+        """
+        return sum([stock.getArea() for stock in self.packed_stocks])
+
+    def getEfficiency(self) -> float:
+        """
+        Get the efficiency of the sheet
+        Efficiency = AreaUsed / Total area
+        """
+        return self.getAreaUsed() / self.getArea()
+
+    def getStats(self) -> dict:
+        """
+        Get the stats of the sheet
+        """
+        stats = {
+            "width": self.width,
+            "height": self.height,
+            "lower_bound_height": self.getLowerBoundHeight(),
+            "area": self.getArea(),
+            "area_used": self.getAreaUsed(),
+            "efficiency": self.getEfficiency(),
+            "num_unpacked_stocks": len(self.unpacked_stocks),
+        }
+        return stats
+
+    def exportSheet(self, filename: str = "output/sheet.txt") -> None:
+        """
+        Export the sheet data to a file
+        Template of file.txt:
+            width height
+            stock_width stock_height x y
+            ...
+
+        """
+        with open(filename, "w") as f:
+            print(f"Exporting sheet to {filename}")
+            f.write(f"{self.width} {self.height}\n")
+            for stock in self.packed_stocks:
+                f.write(f"{stock.x} {stock.y} {stock.width} {stock.height}\n")
+
+    @staticmethod
+    def importSheet(filename: str = "output/sheet.txt") -> "Sheet":
+        """
+        Import the sheet data from a file
+        Template of file.txt:
+            width height
+            stock_width stock_height x y
+            ...
+
+        """
+        with open(filename, "r") as f:
+            width, height = map(int, f.readline().split())
+            sheet = Sheet(width, height)
+            for line in f.readlines():
+                x, y, w, h = map(int, line.split())
+                sheet.addStock(Stock(w, h))
+                sheet.packNext((x, y))
+            return sheet
+
+    def __del__(self):
+        del self.unpacked_stocks[:]
+        del self.packed_stocks[:]
+        del self
+
     def __str__(self) -> str:
         return f"Sheet: {self.width}x{self.height}"
 
+    def __repr__(self) -> str:
+        return f"Sheet(w={self.width}, h={self.height})"
 
-# Tests
 
-
-def test_validateIntersections(pattern: list) -> None:
+if __name__ == "__main__":
+    # Test the sheet class
+    # sheet = Sheet(10, 10)
+    # sheet.addStock(Stock(3, 3))
+    # sheet.addStock(Stock(5, 4))
+    # print(sheet.unpacked_stocks)
     """
-    Test if the pattern has any intersections
+    20 20
+    4 1
+    4 5
+    9 4
+    3 5
+    3 9
+    1 4
+    5 3
+    4 1
+    5 5
+    7 2
+    9 3
+    3 13
+    2 8
+    15 4
+    5 4
+    10 6
+    7 2
     """
-    has_intersections = False
-    for i in range(len(pattern)):
-        for j in range(i + 1, len(pattern)):
-            if pattern[i].intersects(pattern[j]):
-                has_intersections = True
+    sheet = Sheet(20, 20)
+    stocks = [
+        Stock(4, 1),
+        Stock(4, 5),
+        Stock(9, 4),
+        Stock(3, 5),
+        Stock(3, 9),
+        Stock(1, 4),
+        Stock(5, 3),
+        Stock(4, 1),
+        Stock(5, 5),
+        Stock(7, 2),
+        Stock(9, 3),
+        Stock(3, 13),
+        Stock(2, 8),
+        Stock(15, 4),
+        Stock(5, 4),
+        Stock(10, 6),
+        Stock(7, 2),
+    ]
+    sheet.addStocks(stocks)
+    sheet.packNext((0, 0))
+    sheet.packNext((5, 0))
 
-    assert not has_intersections, "The pattern has intersections"
+    sheet.exportSheet()
+    sheet2 = Sheet.importSheet()
+
+    # from visualization import VisualSheet
+
+    # VisualSheet(sheet2).draw()

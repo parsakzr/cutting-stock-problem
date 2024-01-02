@@ -1,5 +1,6 @@
 from stock import Stock, Sheet
 from visualization import VisualSheet
+import logging, sys
 
 
 # Auxiliary functions
@@ -85,7 +86,7 @@ def cutting_stock_problem(sheet):
     return True
 
 
-def bin_packing_BLF(sheet):
+def bin_packing_BLF(sheet, rotation=False):
     """
     Bin Packing Algorithm: Bottom Left Fill
     Consists of two steps:
@@ -119,10 +120,8 @@ def bin_packing_BLF(sheet):
         # Add the new top and right rectangles
         if wr > packed_stock.width:  # if there's space for a right rectangle
             available_rectangles.append(right_rectangle)
-            print(f"Right rectangle: {right_rectangle}")  # DEBUG
         if hr > packed_stock.height:  # top rectangle
             available_rectangles.append(top_rectangle)
-            print(f"Top rectangle: {top_rectangle}")  # DEBUG
 
         # Remove the packed rectangle from the available rectangles
         available_rectangles.pop(packed_rectangle_index)
@@ -133,7 +132,7 @@ def bin_packing_BLF(sheet):
             if is_intersecting(right_rectangle, (xr, yr, wr, hr)):
                 # if it's on the same plane, then it's eaten by the bottom rectangle
                 if xr == right_rectangle[0] and yr != right_rectangle[1]:
-                    print(
+                    logging.info(
                         f"{right_rectangle} Eaten by the bottom rectangle {(xr, yr, wr, hr)}"
                     )  # DEBUG
                     available_rectangles.remove(
@@ -149,7 +148,7 @@ def bin_packing_BLF(sheet):
             if is_intersecting(top_rectangle, (xr, yr, wr, hr)):
                 # if it's on the same plane, then it's eaten by the left rectangle
                 if yr == top_rectangle[1] and xr != top_rectangle[0]:
-                    print(
+                    logging.info(
                         f"{top_rectangle} Eaten by the left rectangle {(xr, yr, wr, hr)}"
                     )  # DEBUG
                     available_rectangles.remove(top_rectangle)
@@ -176,8 +175,11 @@ def bin_packing_BLF(sheet):
                 available_rectangles.pop(i)
 
         # Sort the rectangles in descending order of height
-        # it's to sort by height, if equal then by width, then by x, then by y
-        available_rectangles.sort(key=lambda r: (r[3], r[2], r[0], r[1]), reverse=True)
+        # old: sort by height, if equal then by width, then by x, then by y: r[3], r[2], r[0], r[1]
+        # new: sort by lower y, if equal then by lower x, then by higher height, then by higher width
+        available_rectangles.sort(
+            key=lambda r: (r[1], r[0], -r[3], -r[2]), reverse=False
+        )
 
         return available_rectangles
 
@@ -185,7 +187,7 @@ def bin_packing_BLF(sheet):
     # Sort the stocks in descending order of height
     # stocks.sort(key=lambda s: s.height, reverse=True)
     stocks = sorted(sheet.unpacked_stocks, key=lambda s: s.height, reverse=True)
-    print(stocks)  # DEBUG
+    logging.info(stocks)  # DEBUG
 
     available_rectangles = [
         (0, 0, sheet.width, sheet.height)  # xr, yr, wr, hr
@@ -196,52 +198,84 @@ def bin_packing_BLF(sheet):
         for i, (xr, yr, wr, hr) in enumerate(available_rectangles):
             if wr >= stock.width and hr >= stock.height:
                 # Pack the stock in the current location
-                is_packed = sheet.pack(stock, (xr, yr))
-                available_rectangles = update_available_rectangles(
-                    available_rectangles, i, stock
-                )
-                print(f"Packed Stock: {stock}, {is_packed}")  # DEBUG
-                print(f"Rectangles: {available_rectangles}")  # DEBUG
-                break
-                # if is_packed:
-                #     break
-                # else:
-                #     stock.rotate90()
-                #     is_packed = sheet.pack(stock, (xr, yr))
-                #     available_rectangles = update_available_rectangles(
-                #         available_rectangles, i, stock
-                #     )
-                #     print(f"Packed Stock: {stock}, {is_packed}")
-                #     break
+                logging.info(f"Packing Stock: {stock}")  # DEBUG
+                is_packed = sheet.validate_pack_step(stock, (xr, yr))
 
+                if rotation == True:
+                    # in this block, we try to rotate the stock and see if it fits
+                    # if a better choice, we replace the stock with the rotated one
+                    stock_rotated = Stock(
+                        stock.height, stock.width
+                    )  # a copy of stock rotated 90 degrees
+                    is_packed_rotated = sheet.validate_pack_step(
+                        stock_rotated, (xr, yr)
+                    )
+                    if is_packed_rotated and not is_packed:
+                        stock.rotate90()
+                        is_packed = True
+                    if is_packed_rotated and is_packed:
+                        # if both rotations are valid, choose the one with center lower and right
+                        if (
+                            stock.width < stock.height
+                        ):  # if the original stock is taller than it is wide
+                            stock.rotate90()
+                    is_packed = (
+                        is_packed or is_packed_rotated
+                    )  # if either one is true, then it's packable
+
+                if is_packed:  # if valid, actually pack it
+                    sheet.pack(stock, (xr, yr))
+                    available_rectangles = update_available_rectangles(
+                        available_rectangles, i, stock
+                    )
+                    logging.info(f"Packed: {is_packed}")  # DEBUG
+                    logging.info(f"Rectangles: {available_rectangles}")  # DEBUG
+                    break
+
+        # after all the rectangles, if still not packed, then it's not packable
         if not is_packed:
-            return False
+            logging.info(f"Cannot pack the stock {stock}")  # DEBUG
+            # return False  # if cannot pack a stock, halt the algorithm
 
-        VisualSheet(sheet).draw(unpacked=True)  # DEBUG
-    # Algorithm finished successfully
+        # VisualSheet(sheet).draw(unpacked=True)  # DEBUG
+    # Algorithm finished
+    if len(sheet.unpacked_stocks) > 0:
+        return False
     return True
 
 
 def test_and_visualize_BLF():
-    sheet = Sheet(20, 11)
+    logging.basicConfig(stream=sys.stderr, level=logging.INFO)
+
+    # C2_1
+    sheet = Sheet(20, 20)
     stocks = [
-        Stock(5, 2),
+        Stock(4, 1),
+        Stock(4, 5),
+        Stock(9, 4),
         Stock(3, 5),
-        Stock(4, 3),
-        Stock(3, 3),
-        Stock(8, 5),
+        Stock(3, 9),
+        Stock(1, 4),
+        Stock(5, 3),
+        Stock(4, 1),
         Stock(5, 5),
-        Stock(3, 3),
-        Stock(3, 6),
-        Stock(3, 2),
-        Stock(3, 6),
-        Stock(7, 3),
+        Stock(7, 2),
+        Stock(9, 3),
+        Stock(3, 13),
+        Stock(2, 8),
+        Stock(15, 4),
+        Stock(5, 4),
+        Stock(10, 6),
+        Stock(7, 2),
     ]
     sheet.addStocks(stocks)
 
-    is_success = bin_packing_BLF(sheet)
-    print(f"Did it succeed?: {is_success}")
-    # VisualSheet(sheet).draw(unpacked=True)
+    is_success = bin_packing_BLF(sheet, rotation=False)
+    print(f"Did it succeed?: {is_success}")  # DEBUG
+    print(f"Packing efficiency: {sheet.getEfficiency()}")  # DEBUG
+    # VisualSheet(sheet).draw(unpacked=True) # DEBUG
+    VisualSheet(sheet).draw(unpacked=True)
+    print(sheet.getStats())  # DEBUG
 
 
 if __name__ == "__main__":

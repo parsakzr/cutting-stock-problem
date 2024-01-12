@@ -9,7 +9,7 @@ This project was developed as part of the course [KOM4991 - Çok Disiplinli Tasa
 - [Introduction](#introduction)
 - [Installation](#installation)
 - [Usage](#usage)
-- [Algorithm](#algorithm)
+<!-- - [Algorithm](#algorithm) -->
 - [Examples](#examples)
 - [References](#references)
 - [License](#license)
@@ -21,6 +21,12 @@ In the 2D Cutting Problem, we are given a set of rectangular pieces and a set of
 This project provides a Python implementation of an algorithm to solve the 2D Cutting Problem.
 
 ## Installation
+
+Clone this repository:
+
+```bash
+git clone https://github.com/parsakzr/cutting-stock-problem.git
+```
 
 To use this project, you need to have Python installed.
 

@@ -4,9 +4,13 @@ from stock import Stock, Sheet
 
 
 class VisualSheet:
-    def __init__(self, sheet: Sheet, title: str = ""):
+    def __init__(self, sheet: Sheet, title: str = "", is_txt: bool = True, fillcolor: str = "lightsteelblue"):
         self.sheet = sheet
         self.title = title
+
+        # custom drawing parameters
+        self.is_txt: bool = is_txt
+        self.fillcolor: str = fillcolor
         # matplotlib figure
         # figure is a canvas for the whole visualization
 
@@ -39,7 +43,13 @@ class VisualSheet:
         self.ax_unpacked.set_frame_on(False)
         self.ax_unpacked.axis("scaled")
 
-    def draw(self, unpacked=False, save=False, filename="output/output.png"):
+
+    def draw(
+        self,
+        unpacked=False,
+        save=False,
+        filename="output/output.png",
+    ):
         """
         Draw the sheet and the stocks
 
@@ -48,10 +58,9 @@ class VisualSheet:
         """
 
         # set the visibility of the unpacked stocks
-
         self.ax_unpacked.set_visible(unpacked)
         if unpacked:
-            self.draw_unpacked()
+            self.draw_unpac
         else:
             # sheet ax takes the whole row
             self.ax.set_position([0.05, 0, 0.9, 1])
@@ -69,6 +78,7 @@ class VisualSheet:
 
         plt.close()
 
+
     def draw_sheet(self):
         """
         Draw the sheet with the stocks packed on it
@@ -85,7 +95,7 @@ class VisualSheet:
         self.ax.set_xticks(list(xticks_set))
         self.ax.set_yticks(list(yticks_set))
 
-    def draw_unpacked(self, *, is_txt=True):
+    def draw_unpacked(self):
         """
         Draw the unpacked stocks,
         Since the location of the unpacked stocks are all (0,0),
@@ -96,7 +106,11 @@ class VisualSheet:
         """
 
         def _draw_stocks_staggered(
-            canvas_width, canvas_height, stocks, margin=1.0, scale=1.0, is_txt=True
+            canvas_width,
+            canvas_height,
+            stocks,
+            margin=1.0,
+            scale=1.0,
         ):
             """Draws rectangles in a staggered layout within the given canvas."""
             if not stocks:
@@ -122,7 +136,6 @@ class VisualSheet:
                 self._draw_stock(
                     self.ax_unpacked,
                     Stock(stock.width * scale, stock.height * scale, x, y),
-                    is_txt=is_txt,
                     scale=scale,
                 )
 
@@ -130,7 +143,11 @@ class VisualSheet:
                 column_baselines[shortest_column] += stock.height * scale + margin
 
         def _draw_stocks_grid(
-            canvas_width, canvas_height, stocks, margin=1.0, scale=1.0, is_txt=True
+            canvas_width,
+            canvas_height,
+            stocks,
+            margin=1.0,
+            scale=1.0,
         ):
             """Draws rectangles in a grid layout within the given canvas."""
 
@@ -153,12 +170,15 @@ class VisualSheet:
                 self._draw_stock(
                     self.ax_unpacked,
                     Stock(stock.width * scale, stock.height * scale, x, y),
-                    is_txt=is_txt,
                     scale=scale,
                 )
 
         def _draw_stocks_horizontal(
-            canvas_width, canvas_height, stocks, margin, scale=1.0, is_txt=True
+            canvas_width,
+            canvas_height,
+            stocks,
+            margin,
+            scale=1.0,
         ):
             """Draws rectangles in only one axis next to each other within the given canvas."""
             last_x = 0
@@ -172,7 +192,6 @@ class VisualSheet:
                 self._draw_stock(
                     self.ax_unpacked,
                     Stock(stock.width * scale, stock.height * scale, x, y),
-                    is_txt=is_txt,
                     scale=scale,
                 )
 
@@ -183,12 +202,9 @@ class VisualSheet:
             self.sheet.unpacked_stocks,
             margin=1,
             scale=0.5,
-            is_txt=True,
         )
 
-    def _draw_stock(
-        self, ax, stock, *, custom_xy: tuple = None, is_txt: bool = True, scale=1.0
-    ) -> None:
+    def _draw_stock(self, ax, stock, *, custom_xy: tuple = None, scale=1.0) -> None:
         """
         Draw a stock using matplotlib Rectangle
 
@@ -237,9 +253,9 @@ class VisualSheet:
             stock.width,
             stock.height,
             fill=True,
-            color="lightsteelblue",
+            color=self.fillcolor,
             text=f"{int(stock.width/scale)}x{int(stock.height/scale)}"
-            if is_txt
+            if self.is_txt
             else "",
         )
 

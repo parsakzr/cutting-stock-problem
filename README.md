@@ -11,6 +11,7 @@ This project was developed as part of the course [KOM4991 - Çok Disiplinli Tasa
 - [Usage](#usage)
 - [Algorithm](#algorithm)
 - [Examples](#examples)
+- [References](#references)
 - [License](#license)
 
 ## Introduction
@@ -21,12 +22,30 @@ This project provides a Python implementation of an algorithm to solve the 2D Cu
 
 ## Installation
 
-To use this project, you need to have Python and IPython installed.
+To use this project, you need to have Python installed.
+
+Additionaly, If you want to try out `notebook.ipynb` you should have `ipython` package installed.
 
 ## Usage
 
-## Algorithm
+To generate the benchmark results, run `benchmark.py`:
+
+```bash
+python benchmark.py
+```
+
+and check the results in the `output/` directory.
+
+<!-- ## Algorithm -->
 
 ## Examples
 
+<img src='resources/sheet.png' width='480'>
+
+## References
+
+- [ALGORITHMS FOR THE TWO DIMENSIONAL BIN PACKING PROBLEM WITH PARTIAL CONFLICTS](http://www.numdam.org/article/RO_2012__46_1_41_0.pdf)
+
 ## License
+
+MIT

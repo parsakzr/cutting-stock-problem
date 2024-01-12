@@ -224,6 +224,11 @@ class Sheet:
             "area_used": self.getAreaUsed(),
             "efficiency": self.getEfficiency(),
             "num_unpacked_stocks": len(self.unpacked_stocks),
+            # convert list of stocks to json serializable list
+            # "unpacked_stocks": [
+            #     {"width": stock.width, "height": stock.height}
+            #     for stock in self.unpacked_stocks
+            # ],
         }
         return stats
 

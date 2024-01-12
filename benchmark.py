@@ -46,8 +46,10 @@ if __name__ == "__main__":
             # draw the sheet
             visual_sheet = VisualSheet(sheet)
             visual_sheet.draw(unpacked=False, save=True, filename=path + "sheet.png")
-            visual_sheet.draw(unpacked=True, save=False, filename=path + "unpacked.png")
-
+            # save a basic sheet with no text or color as well
+            VisualSheet(sheet, is_txt=False, fillcolor="white").draw(
+                unpacked=False, save=True, filename=path + "sheet_basic.png"
+            )
             del sheet
 
         f.close()

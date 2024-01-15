@@ -248,7 +248,10 @@ class Sheet:
                 f.write(f"{stock.x} {stock.y} {stock.width} {stock.height}\n")
 
     def to_gcode(
-        self, filename: str = "output/output.gcode", feed_rate: int = 200
+        self,
+        filename: str = "output/output.gcode",
+        canvas_size_mm: tuple = (210, 297),
+        feed_rate: int = 200,
     ) -> None:
         """
         Generate gcode from the sheet
@@ -257,24 +260,57 @@ class Sheet:
             filename: output filename
         """
 
-        def gen_rectangle_gcode(x, y, w, h):
+        # 20mm smaller than the canvas size
+        canvas_size_mm = (canvas_size_mm[0] - 20, canvas_size_mm[1] - 20)
+
+        def gen_rectangle_gcode(x, y, w, h, is_stock: bool = True):
             gcode = [
-                f"G00 Z0",  # Optional: Lower the tool before drawing
                 f"G00 X{x} Y{y}",  # Rapid move to starting point
+                f"G00 Z0",  # Optional: Lower the tool before drawing
                 f"G01 X{x + w} F{feed_rate}",  # Draw first side
                 f"G01 Y{y + h}",  # Draw second side
                 f"G01 X{x}",  # Draw third side
                 f"G01 Y{y}",  # Draw fourth side
-                "G00 Z10",  # Optional: Raise the tool after drawing
+                "G00 Z10",
             ]
+            if is_stock:
+                gcode.extend(
+                    [
+                        # draw a + in the center
+                        f"G00 X{x + w / 2} Y{y + h / 2}",
+                        f"G00 Z0",
+                        f"G01 X{x + w / 2 + 0.02 * w}",
+                        f"G01 X{x + w / 2 - 0.02 * w}",
+                        f"G01 X{x + w / 2}",
+                        f"G01 Y{y + h / 2 + 0.02 * h}",
+                        f"G01 Y{y + h / 2 - 0.02 * h}",
+                        "G00 Z10",  # Optional: Raise the tool after drawing
+                    ]
+                )
             return "\n".join(gcode) + "\n"
+
+        # sort by x, then y
+        stocks = sorted(self.packed_stocks, key=lambda stock: (stock.y + stock.x))
+
+        # scale the coordinates to fit the canvas
+        for stock in stocks:
+            stock.x = stock.x * canvas_size_mm[0] / self.width
+            stock.y = stock.y * canvas_size_mm[1] / self.height
+            stock.width = stock.width * canvas_size_mm[0] / self.width
+            stock.height = stock.height * canvas_size_mm[1] / self.height
 
         with open(filename, "w") as f:
             print(f"Exporting gcode to {filename}")
             # Canvas is 210 x 297 mm
             f.write("G21 G90\n")  # set units to mm and absolute positioning
             f.write(f"F{feed_rate}\n")
-            for stock in self.packed_stocks:
+            # draw canvas sheet borders
+            gcode_canvas = gen_rectangle_gcode(
+                0, 0, canvas_size_mm[0], canvas_size_mm[1], is_stock=False
+            )
+            f.write(gcode_canvas)
+            # draw stock
+            for stock in stocks:
                 gcode_stock = gen_rectangle_gcode(
                     stock.x, stock.y, stock.width, stock.height
                 )

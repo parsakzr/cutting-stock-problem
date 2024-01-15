@@ -65,7 +65,7 @@ class VisualSheet:
         # set the visibility of the unpacked stocks
         self.ax_unpacked.set_visible(unpacked)
         if unpacked:
-            self.draw_unpac
+            self.draw_unpacked()
         else:
             # sheet ax takes the whole row
             self.ax.set_position([0.05, 0, 0.9, 1])

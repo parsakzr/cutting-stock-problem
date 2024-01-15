@@ -38,7 +38,7 @@ if __name__ == "__main__":
             path = OUTPUT_DIR + testcase + "/"
             # export the sheet.txt
             sheet.exportSheet(path + "sheet.txt")
-
+            sheet.to_gcode(path + "sheet.gcode")
             # export the stats.json
             with open(path + "stats.json", "w") as f:
                 f.write(json.dumps(stats, indent=4))

@@ -4,7 +4,13 @@ from stock import Stock, Sheet
 
 
 class VisualSheet:
-    def __init__(self, sheet: Sheet, title: str = "", is_txt: bool = True, fillcolor: str = "lightsteelblue"):
+    def __init__(
+        self,
+        sheet: Sheet,
+        title: str = "",
+        is_txt: bool = True,
+        fillcolor: str = "lightsteelblue",
+    ):
         self.sheet = sheet
         self.title = title
 
@@ -43,7 +49,6 @@ class VisualSheet:
         self.ax_unpacked.set_frame_on(False)
         self.ax_unpacked.axis("scaled")
 
-
     def draw(
         self,
         unpacked=False,
@@ -77,7 +82,6 @@ class VisualSheet:
             plt.show()
 
         plt.close()
-
 
     def draw_sheet(self):
         """

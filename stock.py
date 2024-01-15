@@ -247,6 +247,42 @@ class Sheet:
             for stock in self.packed_stocks:
                 f.write(f"{stock.x} {stock.y} {stock.width} {stock.height}\n")
 
+    def to_gcode(
+        self, filename: str = "output/output.gcode", feed_rate: int = 200
+    ) -> None:
+        """
+        Generate gcode from the sheet
+        All the packed stocks have x,y,w,h
+        Args:
+            filename: output filename
+        """
+
+        def gen_rectangle_gcode(x, y, w, h):
+            gcode = [
+                f"G00 Z0",  # Optional: Lower the tool before drawing
+                f"G00 X{x} Y{y}",  # Rapid move to starting point
+                f"G01 X{x + w} F{feed_rate}",  # Draw first side
+                f"G01 Y{y + h}",  # Draw second side
+                f"G01 X{x}",  # Draw third side
+                f"G01 Y{y}",  # Draw fourth side
+                "G00 Z10",  # Optional: Raise the tool after drawing
+            ]
+            return "\n".join(gcode) + "\n"
+
+        with open(filename, "w") as f:
+            print(f"Exporting gcode to {filename}")
+            # Canvas is 210 x 297 mm
+            f.write("G21 G90\n")  # set units to mm and absolute positioning
+            f.write(f"F{feed_rate}\n")
+            for stock in self.packed_stocks:
+                gcode_stock = gen_rectangle_gcode(
+                    stock.x, stock.y, stock.width, stock.height
+                )
+                f.write(gcode_stock)
+
+            f.write("G28\n")  # home all axes
+            f.write("M30\n")  # end program
+
     @staticmethod
     def importSheet(filename: str = "output/sheet.txt") -> "Sheet":
         """

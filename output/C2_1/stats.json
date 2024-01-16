@@ -1,0 +1,10 @@
+{
+    "width": 60,
+    "height": 30,
+    "lower_bound_height": 30,
+    "area": 1800,
+    "area_used": 1683,
+    "efficiency": 0.935,
+    "num_unpacked_stocks": 2,
+    "packing_time": 0.0003859160060528666
+}
